@@ -1,5 +1,4 @@
 use crypto::CryptoError;
-use std::fmt;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
