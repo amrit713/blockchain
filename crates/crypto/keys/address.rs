@@ -1,4 +1,4 @@
-use crate::{PublicKey, keys::public_key};
+use crate::PublicKey;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
