@@ -14,6 +14,9 @@ pub enum TransactionError {
 
     #[error("Failed to serialize transaction payload")]
     SerializationFailed,
+
+    #[error("Cost calculation overflowed u64")]
+    CostOverflow,
 }
 
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
@@ -33,4 +36,14 @@ pub enum StateError {
 
     #[error("Transaction validation failed: {0}")]
     InvalidTransaction(#[from] TransactionError),
+
+    #[error("Invalid block height sequence. Current height: {current}, Expected: {expected}, Got: {got}")]
+    InvalidBlockHeight {
+        current: u64,
+        expected: u64,
+        got: u64,
+    },
+
+    #[error("Invalid block linkage. Expected previous hash: {expected}, Got: {got}")]
+    InvalidPreviousHash { expected: String, got: String },
 }

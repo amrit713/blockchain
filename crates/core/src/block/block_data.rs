@@ -34,7 +34,6 @@ impl BlockHeader {
 impl Block {
     pub fn new(
         index: u64,
-
         previous_hash: Hash,
         transactions: Vec<Transaction>,
         difficulty: usize,
@@ -83,7 +82,7 @@ impl Block {
         hash.iter().take(difficulty).all(|&byte| byte == 0)
     }
 
-    pub fn gensis(&self) -> Self {
+    pub fn gensis() -> Self {
         Self::new(0, Hash::default(), Vec::new(), DEFAULT_DIFFICULTY, 0)
     }
 

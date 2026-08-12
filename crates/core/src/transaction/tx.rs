@@ -13,7 +13,7 @@ pub struct Transaction {
     pub amount: u64,
     pub nonce: u64,
     pub signature: Signature,
-    fee: u64,
+    pub fee: u64,
 }
 
 impl Transaction {

@@ -1,7 +1,9 @@
+use core::fmt;
+
 use crate::PublicKey;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, PartialOrd, Ord)]
 pub struct Address(pub PublicKey);
 
 impl Address {
@@ -17,5 +19,12 @@ impl Address {
 impl From<PublicKey> for Address {
     fn from(public_key: PublicKey) -> Self {
         Address(public_key)
+    }
+}
+
+impl fmt::Display for Address {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Formats as a hex string (e.g., 0x1234...)
+        write!(f, "0x{}", hex::encode(self.0.as_bytes()))
     }
 }

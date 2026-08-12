@@ -1,8 +1,8 @@
 mod error;
 mod keys;
 mod primitives;
-pub use error::*;
 
+pub use error::*;
 pub use keys::*;
 pub use primitives::Hash;
 
