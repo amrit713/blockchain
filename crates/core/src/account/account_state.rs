@@ -1,7 +1,7 @@
 use crate::{error::StateError, interfaces::IAccount};
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct Account {
     balance: u64,
     nonce: u64,
@@ -31,14 +31,16 @@ impl IAccount for Account {
     }
 
     /// Deducts funds from the account if available
-    fn withdraw(&mut self, amount: u64) -> Result<(), StateError> {
-        if self.balance < amount {
+    fn withdraw(&mut self, amount: u64, fee: u64) -> Result<(), StateError> {
+        if self.balance < amount + fee {
             return Err(StateError::InsufficientBalance {
                 available: self.balance,
                 required: amount,
             });
         }
-        self.balance -= amount;
+
+        let total_amount = amount + fee;
+        self.balance -= total_amount;
         Ok(())
     }
 }

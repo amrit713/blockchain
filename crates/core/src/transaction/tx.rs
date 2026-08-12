@@ -7,12 +7,13 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Transaction {
-    //TODO: pub is used for only testing purpose
+    //TODO: pub is used for only testing
     pub sender: PublicKey,
     pub receiver: PublicKey,
     pub amount: u64,
     pub nonce: u64,
     pub signature: Signature,
+    fee: u64,
 }
 
 impl Transaction {
@@ -21,6 +22,7 @@ impl Transaction {
         receiver: PublicKey,
         amount: u64,
         nonce: u64,
+        fee: u64,
     ) -> Result<Self, TransactionError> {
         let sender = sender_keypair.public_key();
 
@@ -37,6 +39,7 @@ impl Transaction {
             receiver,
             amount,
             nonce,
+            fee,
             signature: Signature::from_bytes(&[0u8; 64]), // Placeholder signature for verification
         };
 
@@ -109,7 +112,7 @@ impl Executable for Transaction {
         }
 
         // 3. Withdraw funds from sender (checks balance internally)
-        sender_acc.withdraw(self.amount)?;
+        sender_acc.withdraw(self.amount, self.fee)?;
 
         // 4. Increment sender's nonce
         sender_acc.increment_nonce();

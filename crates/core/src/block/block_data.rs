@@ -23,10 +23,11 @@ pub struct Block {
 }
 
 impl BlockHeader {
+    pub fn to_bytes(&self) -> Vec<u8> {
+        bincode::serialize(self).expect("Serializationfailed")
+    }
     pub fn calculate_hash(&self) -> Hash {
-        let bytes = bincode::serialize(self).expect("Serializationfailed");
-
-        Hash::digest(&bytes)
+        Hash::digest(&self.to_bytes())
     }
 }
 
@@ -80,6 +81,10 @@ impl Block {
 
     pub fn satisfies_difficulty(hash: &Hash, difficulty: usize) -> bool {
         hash.iter().take(difficulty).all(|&byte| byte == 0)
+    }
+
+    pub fn gensis(&self) -> Self {
+        Self::new(0, Hash::default(), Vec::new(), DEFAULT_DIFFICULTY, 0)
     }
 
     pub fn is_valid(&self, difficulty: usize) -> bool {

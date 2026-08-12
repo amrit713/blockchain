@@ -14,7 +14,7 @@ fn test_account_deposit_and_withdraw() {
     acc.deposit(50);
     assert_eq!(acc.balance(), 150);
 
-    assert!(acc.withdraw(30).is_ok());
+    assert!(acc.withdraw(30, 5).is_ok());
     assert_eq!(acc.balance(), 120);
 }
 
@@ -22,7 +22,7 @@ fn test_account_deposit_and_withdraw() {
 fn test_account_insufficient_balance_error() {
     let mut acc = Account::new(50, 0);
 
-    let result = acc.withdraw(100);
+    let result = acc.withdraw(100, 5);
     assert_eq!(
         result,
         Err(StateError::InsufficientBalance {
