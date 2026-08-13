@@ -82,8 +82,8 @@ impl Block {
         hash.iter().take(difficulty).all(|&byte| byte == 0)
     }
 
-    pub fn gensis() -> Self {
-        Self::new(0, Hash::default(), Vec::new(), DEFAULT_DIFFICULTY, 0)
+    pub fn gensis(difficulty: usize) -> Self {
+        Self::new(0, Hash::default(), Vec::new(), difficulty, 0)
     }
 
     pub fn is_valid(&self, difficulty: usize) -> bool {

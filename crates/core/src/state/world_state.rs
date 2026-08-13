@@ -6,10 +6,10 @@ use crate::{
     transaction::Transaction,
 };
 use crypto::{Address, Hash};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct State {
     accounts: HashMap<Address, Account>,
     block_height: u64,
@@ -100,7 +100,11 @@ impl State {
             }
         }
 
-        let expected_height = self.block_height + 1;
+        let expected_height = if self.block_height == 0 && self.last_block_hash == Hash::default() {
+            0 // Allow Genesis block
+        } else {
+            self.block_height + 1
+        };
 
         if block.header.index != expected_height {
             return Err(StateError::InvalidBlockHeight {

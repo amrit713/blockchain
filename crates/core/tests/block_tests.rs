@@ -1,5 +1,6 @@
 use core::{
     block::{self, Block, BlockHeader},
+    constants::DEFAULT_DIFFICULTY,
     transaction::Transaction,
 };
 use crypto::{Address, Hash, Keypair, PublicKey};
@@ -41,9 +42,9 @@ fn test_mining_and_difficulty_satisfaction() {
     let bob_addr = Keypair::generate().public_key();
 
     let tx = create_dummy_tx(&alice, bob_addr, 50, 0, 3);
-    let previous_block = Block::gensis();
+    let previous_block = Block::gensis(DEFAULT_DIFFICULTY);
 
-    let difficulty = 2;
+    let difficulty = DEFAULT_DIFFICULTY;
     let mut block = Block::new(
         previous_block.header.index + 1,
         previous_block.hash,
@@ -65,8 +66,8 @@ fn test_validation_fails_on_tampered_header() {
 
     let tx = create_dummy_tx(&alice, bob_addr, 50, 0, 3);
 
-    let previous_block = Block::gensis();
-    let difficulty = 2;
+    let previous_block = Block::gensis(DEFAULT_DIFFICULTY);
+    let difficulty = DEFAULT_DIFFICULTY;
     let mut block = Block::new(
         previous_block.header.index + 1,
         previous_block.hash,
@@ -85,7 +86,7 @@ fn test_validation_fails_on_tampered_header() {
 
 #[test]
 fn test_block_header_serialization_roundtrip() {
-    let previous_block = Block::gensis();
+    let previous_block = Block::gensis(DEFAULT_DIFFICULTY);
 
     let header = BlockHeader {
         index: 55,
@@ -93,7 +94,7 @@ fn test_block_header_serialization_roundtrip() {
         previous_hash: previous_block.hash,
         merkle_root: Hash::digest(b"test"),
         nonce: 1001,
-        difficulty: 2,
+        difficulty: DEFAULT_DIFFICULTY,
     };
 
     let bytes = header.to_bytes();
