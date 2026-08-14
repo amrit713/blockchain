@@ -1,7 +1,9 @@
-use crypto::Hash;
+use crypto::{Address, Hash};
 use serde::{Deserialize, Serialize};
 
-use crate::{block::Block, error::StateError, state::State};
+use crate::{
+    account::Account, block::Block, error::StateError, interfaces::IAccount, state::State,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Blockchain {
@@ -54,7 +56,7 @@ impl Blockchain {
     }
 
     //---Block Processing
-    pub fn add_block(&mut self, block: Block) -> Result<(), StateError> {
+    pub fn add_block(&mut self, block: Block, miner_address: &Address) -> Result<(), StateError> {
         if !block.is_valid(self.difficulty) {
             return Err(StateError::InvalidPreviousHash {
                 expected: format!("Valid PoW block at diff {}", self.difficulty),
@@ -78,8 +80,18 @@ impl Blockchain {
             });
         }
 
+        //extract miner account
+
         //3. Execute state transaction(9validates all transaction inside block)
-        self.state.apply_block(&block)?;
+        let miner_fee = self.state.apply_block(&block)?;
+
+        let minner_account = self
+            .state
+            .accounts
+            .entry(*miner_address)
+            .or_insert(Account::new(0, 0));
+
+        minner_account.deposit(miner_fee);
 
         self.chain.push(block);
 

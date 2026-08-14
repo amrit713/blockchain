@@ -11,7 +11,7 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct State {
-    accounts: HashMap<Address, Account>,
+    pub accounts: HashMap<Address, Account>,
     block_height: u64,
     last_block_hash: Hash,
 }
@@ -89,7 +89,7 @@ impl State {
         Ok(tx.fee)
     }
 
-    pub fn apply_block(&mut self, block: &Block) -> Result<(), StateError> {
+    pub fn apply_block(&mut self, block: &Block) -> Result<u64, StateError> {
         //1. Enforce strict chain linkage
         if self.block_height() > 0 {
             if block.header.previous_hash != self.last_block_hash {
@@ -114,16 +114,23 @@ impl State {
             });
         }
 
+        // let mut temp_accounts = self.accounts.clone();
         let mut total_fee = 0;
 
         for tx in &block.transactions {
             total_fee += self.apply_transaction(tx)?;
         }
 
+        // let miner_account = self
+        //     .accounts
+        //     .entry(miner_address)
+        //     .or_insert(Account::new(0, 0));
+        // miner_account.deposit(total_fee);
+
         self.block_height = block.header.index;
         self.last_block_hash = block.hash;
 
-        Ok(())
+        Ok(total_fee)
     }
 
     /// Generates a deterministic State Root Hash across all account balances

@@ -1,5 +1,9 @@
 use core::{
-    block::Block, blockchain::Blockchain, constants::DEFAULT_DIFFICULTY, transaction::Transaction,
+    block::Block,
+    blockchain::Blockchain,
+    constants::DEFAULT_DIFFICULTY,
+    miner::{self, Miner},
+    transaction::Transaction,
 };
 use crypto::{Address, Hash, Keypair};
 
@@ -25,6 +29,9 @@ fn test_successful_block_addition() {
     let alice = Keypair::generate();
     let bob_key = Keypair::generate().public_key();
 
+    let miner_key = Keypair::generate();
+    let miner = Miner::new(miner_key);
+
     let alice_address = Address::from(alice.public_key());
     let bob_address = Address::from(bob_key);
 
@@ -41,7 +48,7 @@ fn test_successful_block_addition() {
         0,
     );
 
-    assert!(blockchain.add_block(block_1).is_ok());
+    assert!(blockchain.add_block(block_1, &miner.address()).is_ok());
     assert_eq!(blockchain.height(), 1);
     assert_eq!(blockchain.state.get_balance(&bob_address), 300);
     assert_eq!(blockchain.state().get_balance(&alice_address), 695);
@@ -51,6 +58,9 @@ fn test_successful_block_addition() {
 fn test_rejects_out_of_sequence_block() {
     let mut blockchain = Blockchain::new(DEFAULT_DIFFICULTY);
 
+    let miner_key = Keypair::generate();
+    let miner = Miner::new(miner_key);
+
     let invalid_block = Block::new(
         5,
         blockchain.latest_hash(),
@@ -59,6 +69,8 @@ fn test_rejects_out_of_sequence_block() {
         0,
     );
 
-    assert!(blockchain.add_block(invalid_block).is_err());
+    assert!(blockchain
+        .add_block(invalid_block, &miner.address())
+        .is_err());
     assert_eq!(blockchain.height(), 0);
 }

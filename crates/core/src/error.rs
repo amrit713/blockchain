@@ -17,6 +17,12 @@ pub enum TransactionError {
 
     #[error("Cost calculation overflowed u64")]
     CostOverflow,
+
+    #[error("Nonce didnot match expected:{expected} got:{got}")]
+    InvalidNonce { expected: u64, got: u64 },
+
+    #[error("Required balance:{required} available balance:{available}")]
+    InsufficentBalance { required: u64, available: u64 },
 }
 
 #[derive(Error, Debug, PartialEq, Eq, Clone)]
@@ -46,4 +52,7 @@ pub enum StateError {
 
     #[error("Invalid block linkage. Expected previous hash: {expected}, Got: {got}")]
     InvalidPreviousHash { expected: String, got: String },
+
+    #[error("Block execution failed {error}")]
+    BlockError { error: String },
 }
