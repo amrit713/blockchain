@@ -7,9 +7,12 @@ pub enum AccountError {
     #[error("insufficient balance: required {required}, available {available}")]
     InsufficientBalance { required: u64, available: u64 },
 
-    #[error("balance arithmetic overflow")]
-    BalanceOverflow,
-
     #[error("transaction cost overflow")]
     CostOverflow,
+
+    #[error("account balance overflow")]
+    BalanceOverflow,
+
+    #[error("account nonce overflow")]
+    NonceOverflow,
 }

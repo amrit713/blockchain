@@ -1,17 +1,11 @@
-use crate::{
-    account::Account,
-    block::Block,
-    error::{StateError, TransactionError},
-    interfaces::{IAccount, Verifiable},
-    transaction::Transaction,
-};
+use crate::{account::Account, error::StateError};
 use crypto::{Address, Hash};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct State {
-    pub accounts: HashMap<Address, Account>,
+    accounts: HashMap<Address, Account>,
     block_height: u64,
     last_block_hash: Hash,
 }
@@ -34,103 +28,36 @@ impl State {
         self.last_block_hash
     }
 
-    pub fn get_account(&self, address: &Address) -> Account {
-        self.accounts.get(address).copied().unwrap_or_default()
+    pub fn get_account(&self, address: &Address) -> Option<&Account> {
+        self.accounts.get(address)
     }
 
-    pub fn get_balance(&self, address: &Address) -> u64 {
-        self.get_account(address).balance()
+    pub fn get_balance(&self, address: &Address) -> Option<u64> {
+        self.accounts.get(address).map(Account::balance)
     }
 
-    pub fn get_nonce(&self, address: &Address) -> u64 {
-        self.get_account(address).nonce()
+    pub fn get_nonce(&self, address: &Address) -> Option<u64> {
+        self.get_account(address).map(Account::nonce)
+    }
+
+    pub(crate) fn set_account(&mut self, address: Address, account: Account) {
+        self.accounts.insert(address, account);
+    }
+
+    pub(crate) fn set_block_metadata(&mut self, height: u64, hash: Hash) {
+        self.block_height = height;
+        self.last_block_hash = hash;
     }
 
     // ---STATE MUTATIONS--
 
     //Credits an address directly (used for genesis allocations or block miner rewards)
-    pub fn credit(&mut self, address: Address, amount: u64) {
+    pub fn credit(&mut self, address: Address, amount: u64) -> Result<(), StateError> {
         let account = self.accounts.entry(address).or_default();
 
-        account.deposit(amount);
-    }
+        account.deposit(amount)?;
 
-    //Execute a single transaction against the state state machine
-    pub fn apply_transaction(&mut self, tx: &Transaction) -> Result<u64, StateError> {
-        if tx.amount == 0 {
-            return Err(TransactionError::ZeroAmount.into());
-        }
-
-        let sender_address = Address::from(tx.sender);
-        let receiver_address = Address::from(tx.receiver);
-
-        tx.verify()?;
-
-        {
-            let sender = self.accounts.get_mut(&sender_address).ok_or_else(|| {
-                StateError::AccountNotFound {
-                    address: sender_address.to_string(),
-                }
-            })?;
-
-            sender.withdraw(tx.amount, tx.fee)?;
-            sender.increment_nonce();
-        }
-
-        {
-            let receiver = self
-                .accounts
-                .entry(receiver_address)
-                .or_insert(Account::new(0, 0));
-
-            receiver.deposit(tx.amount);
-        }
-
-        Ok(tx.fee)
-    }
-
-    pub fn apply_block(&mut self, block: &Block) -> Result<u64, StateError> {
-        //1. Enforce strict chain linkage
-        if self.block_height() > 0 {
-            if block.header.previous_hash != self.last_block_hash {
-                return Err(StateError::InvalidPreviousHash {
-                    expected: self.last_block_hash.to_string(),
-                    got: block.header.previous_hash.to_string(),
-                });
-            }
-        }
-
-        let expected_height = if self.block_height == 0 && self.last_block_hash == Hash::default() {
-            0 // Allow Genesis block
-        } else {
-            self.block_height + 1
-        };
-
-        if block.header.index != expected_height {
-            return Err(StateError::InvalidBlockHeight {
-                current: self.block_height,
-                expected: expected_height,
-                got: block.header.index,
-            });
-        }
-
-        // let mut temp_accounts = self.accounts.clone();
-        let mut total_fee = 0;
-
-        for tx in &block.transactions {
-            total_fee += self.apply_transaction(tx)?;
-        }
-
-        // let miner_account = self
-        //     .accounts
-        //     .entry(miner_address)
-        //     .or_insert(Account::new(0, 0));
-        // miner_account.deposit(total_fee);
-
-        self.block_height = block.header.index;
-        self.last_block_hash = block.hash;
-
-        Ok(total_fee)
+        Ok(())
     }
 
     /// Generates a deterministic State Root Hash across all account balances

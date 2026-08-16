@@ -2,31 +2,31 @@ use crypto::{Address, Hash};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    account::Account, block::Block, error::StateError, interfaces::IAccount, state::State,
+    block::Block,
+    error::StateError,
+    state::{ExecutionContext, State},
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Blockchain {
     chain: Vec<Block>,
-    pub state: State,
+    state: State,
     difficulty: usize,
 }
 
 impl Blockchain {
-    pub fn new(difficulty: usize) -> Self {
-        let gensis_block = Block::gensis(difficulty);
+    pub fn new(difficulty: usize) -> Result<Self, StateError> {
+        let gensis_block = Block::genesis(difficulty)?;
 
-        let mut state = State::new();
+        let state = State::new();
 
-        state
-            .apply_block(&gensis_block)
-            .expect("genesis block application failed");
-
-        Self {
+        let blockchain = Self {
             chain: vec![gensis_block],
             state,
             difficulty,
-        }
+        };
+
+        Ok(blockchain)
     }
 
     pub fn blocks(&self) -> &[Block] {
@@ -55,43 +55,50 @@ impl Blockchain {
         self.difficulty
     }
 
-    //---Block Processing
-    pub fn add_block(&mut self, block: Block, miner_address: &Address) -> Result<(), StateError> {
-        if !block.is_valid(self.difficulty) {
+    fn validate_block(&self, block: &Block) -> Result<(), StateError> {
+        let latest_hash = self.latest_hash();
+
+        if block.header.previous_hash != latest_hash {
             return Err(StateError::InvalidPreviousHash {
-                expected: format!("Valid PoW block at diff {}", self.difficulty),
-                got: "Invalid block header or proof-of-work".to_string(),
+                expected: latest_hash.to_string(),
+                got: block.header.previous_hash.to_string(),
             });
         }
 
-        //2. Validate chain continuity
-        if block.header.previous_hash != self.latest_hash() {
-            return Err(StateError::InvalidPreviousHash {
-                expected: format!("{:?}", self.latest_hash()),
-                got: format!("{:?}", block.header.previous_hash),
-            });
-        }
+        let expected_height = self.height() + 1;
 
-        if block.header.index != self.height() + 1 {
+        if block.header.index != expected_height {
             return Err(StateError::InvalidBlockHeight {
                 current: self.height(),
-                expected: self.height() + 1,
+                expected: expected_height,
                 got: block.header.index,
             });
         }
 
-        //extract miner account
+        block.is_valid(self.difficulty)?;
 
-        //3. Execute state transaction(9validates all transaction inside block)
-        let miner_fee = self.state.apply_block(&block)?;
+        Ok(())
+    }
 
-        let minner_account = self
-            .state
-            .accounts
-            .entry(*miner_address)
-            .or_insert(Account::new(0, 0));
+    //---Block Processing
+    pub fn add_block(&mut self, block: Block, miner_address: &Address) -> Result<(), StateError> {
+        self.validate_block(&block)?;
 
-        minner_account.deposit(miner_fee);
+        let mut context = ExecutionContext::new(&self.state);
+
+        let total_fee = context.execute_transactions(&block.transactions)?;
+
+        context.credit(*miner_address, total_fee)?;
+
+        //commit
+        let diff = context.into_diff();
+        diff.commit_into(&mut self.state);
+
+        //update blockchain metadata
+        self.state
+            .set_block_metadata(block.header.index, block.hash);
+
+        //add block to chain
 
         self.chain.push(block);
 
