@@ -1,4 +1,5 @@
 use crate::error::TransactionError;
+
 use crypto::{Hash, Keypair, PublicKey, Signature};
 use serde::{Deserialize, Serialize};
 
@@ -25,20 +26,22 @@ impl Transaction {
 
         Self::validate_fields(&sender, &receiver, amount)?;
 
-        let mut tx = Self {
+        let payload = Self::signing_payload(&sender, &receiver, amount, nonce, fee);
+
+        let bytes = bincode::serialize(&payload).map_err(TransactionError::Serialization)?;
+
+        let signing_hash = Hash::digest(&bytes);
+
+        let signature = sender_keypair.sign(&signing_hash);
+
+        Ok(Self {
             sender,
             receiver,
             amount,
             nonce,
             fee,
-            signature: Signature::from_bytes(&[0u8; 64]), // Placeholder signature for verification
-        };
-
-        let signing_hash = tx.signing_hash()?;
-
-        tx.signature = sender_keypair.sign(&signing_hash);
-
-        Ok(tx)
+            signature,
+        })
     }
 
     fn signing_payload(
@@ -51,25 +54,7 @@ impl Transaction {
         (sender.as_bytes(), receiver.as_bytes(), amount, nonce, fee)
     }
 
-    pub fn signing_hash(&self) -> Result<Hash, TransactionError> {
-        let payload = (
-            self.sender.as_bytes(),
-            self.receiver.as_bytes(),
-            self.amount,
-            self.nonce,
-            self.fee,
-        );
-
-        let bytes = bincode::serialize(&payload).map_err(TransactionError::Serialization)?;
-
-        Ok(Hash::digest(&bytes))
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        bincode::serialize(self).unwrap_or_default()
-    }
-
-    pub fn validate_fields(
+    fn validate_fields(
         sender: &PublicKey,
         receiver: &PublicKey,
         amount: u64,
@@ -85,8 +70,22 @@ impl Transaction {
         Ok(())
     }
 
+    pub fn signing_hash(&self) -> Result<Hash, TransactionError> {
+        let payload = Self::signing_payload(
+            &self.sender,
+            &self.receiver,
+            self.amount,
+            self.nonce,
+            self.fee,
+        );
+
+        let bytes = bincode::serialize(&payload).map_err(TransactionError::Serialization)?;
+
+        Ok(Hash::digest(&bytes))
+    }
+
     pub fn verify(&self) -> Result<(), TransactionError> {
-        Self::validate_fields(&self.sender, &self.receiver, self.amount);
+        Self::validate_fields(&self.sender, &self.receiver, self.amount)?;
 
         let signing_hash = self.signing_hash()?;
 
@@ -95,6 +94,25 @@ impl Transaction {
             .map_err(TransactionError::InvalidSignature)?;
 
         Ok(())
+    }
+
+    pub fn tx_id(&self) -> Result<Hash, TransactionError> {
+        let payload = self.id_payload();
+
+        let bytes = bincode::serialize(&payload).map_err(TransactionError::Serialization)?;
+
+        Ok(Hash::digest(&bytes))
+    }
+
+    fn id_payload(&self) -> ([u8; 32], [u8; 32], u64, u64, u64, &Signature) {
+        (
+            self.sender.as_bytes(),
+            self.receiver.as_bytes(),
+            self.amount,
+            self.nonce,
+            self.fee,
+            &self.signature,
+        )
     }
 
     pub fn sender(&self) -> &PublicKey {
